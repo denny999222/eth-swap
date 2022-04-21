@@ -17,7 +17,7 @@ import EthSwap from "../abis/EthSwap.json";
 
 const App = () => {
   const [account, setAccount] = useState("");
-  const [balance, setBalance] = useState("");
+  const [ethBalance, setEthBalance] = useState("");
   const [tokenContract, setTokenContract] = useState();
   const [ethSwapContract, setEthSwapContract] = useState();
   const [tokenBalance, setTokenBalance] = useState("0");
@@ -30,7 +30,7 @@ const App = () => {
   }, []);
 
   useEffect(() => {
-    if (ethSwapContract != undefined && tokenContract != undefined) {
+    if (ethSwapContract !== undefined && tokenContract !== undefined) {
       setLoading(false);
     }
   }, [ethSwapContract, tokenContract]);
@@ -51,9 +51,9 @@ const App = () => {
   const loadBlockchainData = async () => {
     const web3 = window.web3;
     const accounts = await web3.eth.getAccounts();
-    const ethBalance = await web3.eth.getBalance(accounts[0]);
+    const _ethBalance = await web3.eth.getBalance(accounts[0]);
     setAccount(accounts[0]);
-    setBalance(ethBalance);
+    setEthBalance(_ethBalance);
 
     // LOAD TOKEN CONTRACT REFERENCE
     const networkId = await web3.eth.net.getId();
@@ -95,6 +95,30 @@ const App = () => {
     }
   };
 
+  const buyTokens = async (etherAmount) => {
+    setLoading(true);
+    ethSwapContract.methods.buyTokens
+      .send({ from: account, value: etherAmount })
+      .on("transactionHash", (hash) => {
+        setLoading(false);
+      });
+  };
+
+  const sellTokens = async (tokenAmount) => {
+    setLoading(true);
+    tokenContract.methods
+      .approve(ethSwapContract.address, tokenAmount)
+      .send({ from: account })
+      .on("transactionHash", (hash) => {
+        ethSwapContract.methods
+          .sellTokens(tokenAmount)
+          .send({ from: account })
+          .on("transactionHash", (hash) => {
+            setLoading(false);
+          });
+      });
+  };
+
   return loading ? (
     <h1>LOADING BLOCKCHAIN DATA...</h1>
   ) : (
@@ -102,9 +126,9 @@ const App = () => {
       <Navbar {...{ account }} />
       <div className="container-fluid mt-5">
         <div className="row">
-          <main role="main" className="col-lg-12 d-flex text-center">
+          <main role="main" className="col-lg-12 ml-auto mr-auto">
             <div className="content mr-auto ml-auto">
-              <Main />
+              <Main {...{ ethBalance, tokenBalance, buyTokens, sellTokens }} />
             </div>
           </main>
         </div>
